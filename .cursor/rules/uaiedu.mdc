@@ -1,0 +1,54 @@
+---
+description: Core project rules for UAI MVP (Vite + Vue 3 + Django + JWT)
+globs: 
+alwaysApply: true
+---
+# Project Overview
+project: UAI MVP Education Platform  
+description: Frontend-backend separation, rapid delivery version (4–8 weeks), using a simplified architecture while maintaining best practices.
+
+# Technology Stack
+frontend:
+  framework: Vue 3 + Vite
+  ui: Static Bootstrap 5.3.6 (Ant Design Pro not used)
+  state: Pinia
+  api: Axios (wrapped in a utility layer)
+  compositionAPI: true
+  directoryStructure:
+    - src/views (page-level components)
+    - src/components (reusable components)
+    - src/store (Pinia stores)
+    - src/api (Axios request wrappers)
+
+backend:
+  language: Python 3.12
+  framework: Django 5.2
+  api: Django REST Framework
+  auth: JWT (SimpleJWT)
+  admin: Django Admin (general-purpose frontend admin not used at this stage)
+
+# Development Conventions
+rules:
+  - All API endpoints must be prefixed with `/api/`
+  - All frontend requests must automatically include JWT tokens
+  - All backend API responses must follow the structure: `{ status, data, msg }`
+  - All pages must be implemented using the Composition API (no Options API)
+  - Pinia is the only accepted state management solution
+  - No dynamic menus or RBAC at this stage; permission check is based on `is_staff` in Django
+
+# Code Documentation & Comments
+comments:
+  - Each component must include a file-level comment describing its purpose
+  - Each Axios wrapper function must include annotations for request method and response format
+  - If non-standard patterns are found, leave PR comments automatically and suggest corrections
+
+# Environment & Deployment
+environments:
+  development: localhost:5173 (frontend), localhost:8000 (backend)
+  database: SQLite (dev), PostgreSQL (prod)
+
+# File Naming Conventions
+naming:
+  components: PascalCase (UserProfile.vue)
+  composables: camelCase with 'use' prefix (useAuth.js)
+  api_files: camelCase (userService.js)
