@@ -1,0 +1,90 @@
+# =============================
+# Python & Django
+# =============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# =============================
+# 敏感信息文件 - 绝不提交！
+# =============================
+.env
+.env.local
+.env.production
+.env.staging
+*.pem
+*.key
+*.crt
+secret.txt
+secrets/
+
+# =============================
+# 数据库文件
+# =============================
+*.db
+*.sqlite
+*.sqlite3
+
+# =============================
+# IDE & 编辑器
+# =============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =============================
+# Node.js & 前端
+# =============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+
+# =============================
+# 系统文件
+# =============================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# =============================
+# 临时文件
+# =============================
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# =============================
+# 日志文件
+# =============================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log* 

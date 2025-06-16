@@ -1,0 +1,78 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+description: 全面后端设计规则 - 适用于 UAI 教育平台 Django 项目开发
+autoAttach:
+  globs:
+    - "backend/**"
+ruleType: Always
+
+rules:
+
+  # 模块化架构建议
+  - description: 后端项目应划分为 users、courses、orders、cart、learning、reviews、system 七个 app
+    alwaysApply: true
+
+  - description: 每个 app 至少包含 models、serializers、views、urls 四个基础模块
+    alwaysApply: true
+
+  - description: 所有模型字段建议添加 verbose_name 便于后台管理展示
+    alwaysApply: true
+
+  - description: 所有 app 注册路径使用 apps.模块名 结构，例如 apps.users
+    alwaysApply: true
+
+  # API 结构规范
+  - description: 所有接口遵循 RESTful 风格，URL 应统一前缀为 /api/
+    alwaysApply: true
+
+  - description: 用户认证相关 API 包括 login、register、logout、refresh、profile
+    alwaysApply: true
+
+  - description: 接口返回结构建议为 { "status": int, "data": any, "msg": str }
+    alwaysApply: true
+
+  # 安全性要求
+  - description: 严禁在 settings.py 或源码中硬编码敏感信息（密码、密钥、连接地址等）
+    alwaysApply: true
+
+  - description: 所有敏感配置应使用 .env 文件，并将其加入 .gitignore 中
+    alwaysApply: true
+
+  - description: 当项目即将上传到 GitHub 时，如检测到敏感配置未做隔离，应立即提醒开发者并建议修复
+    alwaysApply: true
+
+  # 技术栈建议
+  - description: 后端框架采用 Django 5.2，API 层使用 Django REST Framework
+    alwaysApply: true
+
+  - description: 认证方式使用 SimpleJWT，登录接口返回 access 和 refresh token
+    alwaysApply: true
+
+  - description: 推荐使用 PostgreSQL 为主数据库，Redis 作为缓存，支持后期接入 Elasticsearch 搜索
+    alwaysApply: false
+
+  - description: 文件上传应对接 OSS 或 S3 等云对象存储，不推荐将上传内容存储于本地
+    alwaysApply: false
+
+  # 部署与优化建议
+  - description: 项目应在生产环境中开启数据库读写分离、API 缓存和 CDN 静态资源加速
+    alwaysApply: false
+
+  - description: 订单与支付系统建议支持支付宝和微信支付接口封装，并保留交易日志表
+    alwaysApply: true
+
+  - description: 所有重要操作应记录操作日志（system app 中定义 OperationLog）
+    alwaysApply: true
+
+  # 开发优先级与阶段规划
+  - description: MVP 阶段应优先完成 users、courses、cart、orders 四个核心 app
+    alwaysApply: true
+
+  - description: 增强阶段开发 learning（学习记录）与 reviews（评价系统）
+    alwaysApply: true
+
+  - description: 最终阶段支持 system（日志、公告）与推荐算法、搜索功能
+    alwaysApply: false
