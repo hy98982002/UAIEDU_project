@@ -1,4 +1,5 @@
 import api from '@/utils/axios'
+import { AUTH_API, USER_API } from '@/constants/api'
 
 // API响应的通用格式
 interface ApiResponse<T = any> {
@@ -15,6 +16,7 @@ export interface UserInfo {
   nickname: string
   email?: string
   is_phone_verified: boolean
+  has_password?: boolean
   profile?: {
     real_name?: string
     gender?: string
@@ -27,6 +29,7 @@ export interface LoginResponse {
   access: string
   refresh: string
   user: UserInfo
+  need_set_password?: boolean
 }
 
 // 认证服务
@@ -35,7 +38,7 @@ export class AuthService {
    * 用户登录
    */
   static async login(phone: string, password: string): Promise<LoginResponse> {
-    const response = await api.post<ApiResponse<LoginResponse>>('/api/users/auth/login/', {
+    const response = await api.post<ApiResponse<LoginResponse>>(AUTH_API.LOGIN, {
       phone,
       password
     })
@@ -51,7 +54,7 @@ export class AuthService {
    * 用户注册
    */
   static async register(phone: string, password: string, nickname?: string): Promise<LoginResponse> {
-    const response = await api.post<ApiResponse<LoginResponse>>('/api/users/auth/register/', {
+    const response = await api.post<ApiResponse<LoginResponse>>(AUTH_API.REGISTER, {
       phone,
       password,
       nickname: nickname || ''
@@ -65,12 +68,28 @@ export class AuthService {
   }
 
   /**
+   * 短信验证码注册
+   */
+  static async smsRegister(phone: string, smsCode: string): Promise<LoginResponse> {
+    const response = await api.post<ApiResponse<LoginResponse>>(AUTH_API.SMS_REGISTER, {
+      phone,
+      sms_code: smsCode
+    })
+    
+    if (response.data.status === 201) {
+      return response.data.data
+    } else {
+      throw new Error(response.data.msg || '注册失败')
+    }
+  }
+
+  /**
    * 短信验证码登录
    */
-  static async smsLogin(phone: string, code: string): Promise<LoginResponse> {
-    const response = await api.post<ApiResponse<LoginResponse>>('/api/users/auth/sms-login/', {
+  static async smsLogin(phone: string, smsCode: string): Promise<LoginResponse> {
+    const response = await api.post<ApiResponse<LoginResponse>>(AUTH_API.SMS_LOGIN, {
       phone,
-      code
+      sms_code: smsCode
     })
     
     if (response.data.status === 200) {
@@ -84,7 +103,7 @@ export class AuthService {
    * 刷新Token
    */
   static async refreshToken(refreshToken: string): Promise<string> {
-    const response = await api.post<ApiResponse<{ access: string }>>('/api/users/auth/refresh/', {
+    const response = await api.post<ApiResponse<{ access: string }>>(AUTH_API.REFRESH_TOKEN, {
       refresh: refreshToken
     })
     
@@ -99,7 +118,7 @@ export class AuthService {
    * 获取用户资料
    */
   static async getUserProfile(): Promise<UserInfo> {
-    const response = await api.get<ApiResponse<UserInfo>>('/api/users/user/profile/')
+    const response = await api.get<ApiResponse<UserInfo>>(USER_API.PROFILE)
     
     if (response.data.status === 200) {
       return response.data.data
@@ -112,7 +131,7 @@ export class AuthService {
    * 更新用户资料
    */
   static async updateUserProfile(profileData: Partial<UserInfo>): Promise<UserInfo> {
-    const response = await api.put<ApiResponse<UserInfo>>('/api/users/user/profile/', profileData)
+    const response = await api.put<ApiResponse<UserInfo>>(USER_API.UPDATE_PROFILE, profileData)
     
     if (response.data.status === 200) {
       return response.data.data
@@ -125,7 +144,7 @@ export class AuthService {
    * 发送短信验证码
    */
   static async sendSmsCode(phone: string): Promise<void> {
-    const response = await api.post<ApiResponse<null>>('/api/users/auth/send-sms/', {
+    const response = await api.post<ApiResponse<null>>(AUTH_API.SEND_SMS, {
       phone
     })
     
@@ -138,7 +157,7 @@ export class AuthService {
    * 修改密码
    */
   static async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    const response = await api.post<ApiResponse<null>>('/api/users/user/change-password/', {
+    const response = await api.post<ApiResponse<null>>(USER_API.CHANGE_PASSWORD, {
       old_password: oldPassword,
       new_password: newPassword
     })
@@ -152,7 +171,7 @@ export class AuthService {
    * 用户登出
    */
   static async logout(): Promise<void> {
-    const response = await api.post<ApiResponse<null>>('/api/users/auth/logout/')
+    const response = await api.post<ApiResponse<null>>(AUTH_API.LOGOUT)
     
     if (response.data.status !== 200) {
       throw new Error(response.data.msg || '登出失败')

@@ -12,6 +12,8 @@ export const useAuthStore = defineStore('auth', () => {
   // 计算属性
   const isAuthenticated = computed(() => !!accessToken.value)
   const isPhoneVerified = computed(() => userInfo.value?.is_phone_verified || false)
+  const hasPassword = computed(() => userInfo.value?.has_password || false)
+  const user = computed(() => userInfo.value)
 
   // 设置Token
   const setTokens = (access: string, refresh: string) => {
@@ -48,6 +50,43 @@ export const useAuthStore = defineStore('auth', () => {
       return await login(phone, password)
     } catch (error: any) {
       console.error('注册失败:', error)
+      throw error
+    }
+  }
+
+  // 短信验证码登录
+  const smsLogin = async (phone: string, smsCode: string): Promise<boolean> => {
+    try {
+      const { access, refresh, user } = await AuthService.smsLogin(phone, smsCode)
+      setTokens(access, refresh)
+      setUserInfo(user)
+      return true
+    } catch (error: any) {
+      console.error('短信登录失败:', error)
+      throw error
+    }
+  }
+
+  // 短信验证码注册
+  const smsRegister = async (phone: string, smsCode: string): Promise<{ success: boolean, needSetPassword?: boolean }> => {
+    try {
+      const { access, refresh, user, need_set_password } = await AuthService.smsRegister(phone, smsCode)
+      setTokens(access, refresh)
+      setUserInfo(user)
+      return { success: true, needSetPassword: need_set_password }
+    } catch (error: any) {
+      console.error('短信注册失败:', error)
+      throw error
+    }
+  }
+
+  // 发送短信验证码
+  const sendSmsCode = async (phone: string): Promise<boolean> => {
+    try {
+      await AuthService.sendSmsCode(phone)
+      return true
+    } catch (error: any) {
+      console.error('发送验证码失败:', error)
       throw error
     }
   }
@@ -109,10 +148,15 @@ export const useAuthStore = defineStore('auth', () => {
     // 计算属性
     isAuthenticated,
     isPhoneVerified,
+    hasPassword,
+    user,
     
     // 方法
     login,
     register,
+    smsLogin,
+    smsRegister,
+    sendSmsCode,
     logout,
     refreshAccessToken,
     fetchUserProfile,

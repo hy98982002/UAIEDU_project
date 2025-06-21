@@ -7,63 +7,6 @@
         <i>×</i>
       </span>
 
-      <!-- 密码登录表单 -->
-      <div v-if="currentForm === 'password'" class="form-section">
-        <h4 class="text-center mt-4">密码登录</h4>
-        <form class="mt-5" @submit.prevent="handlePasswordLogin">
-          <div class="mb-3">
-            <div class="input-group">
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="passwordForm.phone"
-                placeholder="请输入手机号"
-                required
-              >
-            </div>
-          </div>
-          <div class="mb-3 mt-4">
-            <input 
-              type="password" 
-              class="form-control" 
-              v-model="passwordForm.password"
-              placeholder="请输入登录密码"
-              required
-            >
-          </div>
-          <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isPasswordFormValid">
-            登录
-          </button>
-
-          <!-- 其他登录方式 -->
-          <div class="other-login-methods">
-            其他登陆方式
-          </div>
-          <div class="login-icons">
-            <div class="login-icon" @click="switchForm('wechat')">
-              <i class="fab fa-weixin wechat-icon"></i>
-            </div>
-            <div class="login-icon" @click="switchForm('code')">
-              <i class="fas fa-mobile-alt phone-icon"></i>
-            </div>
-          </div>
-
-          <!-- 用户协议复选框 -->
-          <div class="form-check mt-4 text-center">
-            <input 
-              class="form-check-input" 
-              type="checkbox" 
-              v-model="passwordForm.agreement"
-              id="agreement"
-              required
-            >
-            <label class="form-check-label" for="agreement">
-              我已阅读并同意 <a href="#" class="text-link">《用户协议与服务条款》</a>
-            </label>
-          </div>
-        </form>
-      </div>
-
       <!-- 手机验证码登录表单 -->
       <div v-if="currentForm === 'code'" class="form-section">
         <h4 class="text-center mt-4">手机验证码登录</h4>
@@ -76,6 +19,7 @@
                 v-model="codeForm.phone"
                 placeholder="请输入手机号"
                 required
+                aria-label="手机号"
               >
             </div>
           </div>
@@ -87,15 +31,13 @@
                 v-model="codeForm.verificationCode"
                 placeholder="请输入验证码"
                 required
+                aria-label="验证码"
               >
-              <button 
-                class="verification-code-btn" 
-                type="button"
-                @click="sendVerificationCode('code')"
-                :disabled="countdown > 0"
-              >
-                {{ countdown > 0 ? `${countdown}秒后重新获取` : '获取验证码' }}
-              </button>
+              <SmsButton 
+                :phone="codeForm.phone"
+                @success="handleSmsSuccess"
+                @error="handleSmsError"
+              />
             </div>
           </div>
           <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isCodeFormValid">
@@ -116,7 +58,7 @@
           </div>
 
           <!-- 用户协议复选框 -->
-          <div class="form-check mt-4 text-center">
+          <div id="form-check" class="form-check text-center">
             <input 
               class="form-check-input" 
               type="checkbox" 
@@ -125,6 +67,65 @@
               required
             >
             <label class="form-check-label" for="agreementCode">
+              我已阅读并同意 <a href="#" class="text-link">《用户协议与服务条款》</a>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <!-- 密码登录表单 -->
+      <div v-if="currentForm === 'password'" class="form-section">
+        <h4 class="text-center mt-4">密码登录</h4>
+        <form class="mt-5" @submit.prevent="handlePasswordLogin">
+          <div class="mb-3">
+            <div class="input-group">
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="passwordForm.phone"
+                placeholder="请输入手机号"
+                required
+                aria-label="手机号"
+              >
+            </div>
+          </div>
+          <div class="mb-3 mt-4">
+            <input 
+              type="password" 
+              class="form-control" 
+              v-model="passwordForm.password"
+              placeholder="请输入登录密码"
+              required
+              aria-label="密码"
+            >
+          </div>
+          <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isPasswordFormValid">
+            登录
+          </button>
+
+          <!-- 其他登录方式 -->
+          <div class="other-login-methods">
+            其他登陆方式
+          </div>
+          <div class="login-icons">
+            <div class="login-icon" @click="switchForm('wechat')">
+              <i class="fab fa-weixin wechat-icon"></i>
+            </div>
+            <div class="login-icon" @click="switchForm('code')">
+              <i class="fas fa-mobile-alt phone-icon"></i>
+            </div>
+          </div>
+
+          <!-- 用户协议复选框 -->
+          <div id="form-check" class="form-check text-center">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              v-model="passwordForm.agreement"
+              id="agreementPassword"
+              required
+            >
+            <label class="form-check-label" for="agreementPassword">
               我已阅读并同意 <a href="#" class="text-link">《用户协议与服务条款》</a>
             </label>
           </div>
@@ -244,25 +245,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
-import { AuthService } from '@/services/auth'
+import { validatePhone, validateSmsCode, validatePassword, validateFields } from '@/utils/validators'
+import toast from '@/utils/toast'
+import SmsButton from '@/components/SmsButton.vue'
 import api from '@/utils/axios'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-// 当前显示的表单类型
-const currentForm = ref('password') // 'password' | 'code' | 'wechat' | 'register'
-
-// 倒计时状态
-const countdown = ref(0)
-let countdownTimer = null
-
-// 提示消息
-const message = ref('')
+// 当前显示的表单类型 - 默认显示验证码登录
+const currentForm = ref('code') // 'password' | 'code' | 'wechat' | 'register'
 
 // 各个表单的数据
 const passwordForm = ref({
@@ -289,20 +285,29 @@ const registerForm = ref({
 
 // 表单验证计算属性
 const isPasswordFormValid = computed(() => {
-  return passwordForm.value.phone &&
-         passwordForm.value.password &&
+  const phoneValidation = validatePhone(passwordForm.value.phone)
+  const passwordValidation = validatePassword(passwordForm.value.password)
+  
+  return phoneValidation.valid && 
+         passwordValidation.valid && 
          passwordForm.value.agreement
 })
 
 const isCodeFormValid = computed(() => {
-  return codeForm.value.phone &&
-         codeForm.value.verificationCode &&
+  const phoneValidation = validatePhone(codeForm.value.phone)
+  const codeValidation = validateSmsCode(codeForm.value.verificationCode)
+  
+  return phoneValidation.valid && 
+         codeValidation.valid && 
          codeForm.value.agreement
 })
 
 const isRegisterFormValid = computed(() => {
-  return registerForm.value.phone &&
-         registerForm.value.verificationCode &&
+  const phoneValidation = validatePhone(registerForm.value.phone)
+  const codeValidation = validateSmsCode(registerForm.value.verificationCode)
+  
+  return phoneValidation.valid && 
+         codeValidation.valid && 
          registerForm.value.agreement
 })
 
@@ -311,96 +316,75 @@ const switchForm = (formType) => {
   currentForm.value = formType
 }
 
-// 发送验证码
-const sendVerificationCode = async (formType) => {
-  let phone = ''
-  
-  if (formType === 'code') {
-    phone = codeForm.value.phone
-  } else if (formType === 'register') {
-    phone = registerForm.value.phone
-  }
-
-  if (!phone) {
-    showMessage('请先输入手机号')
-    return
-  }
-
-  // 手机号格式验证
-  const phoneRegex = /^1[3-9]\d{9}$/
-  if (!phoneRegex.test(phone)) {
-    showMessage('请输入正确的手机号码')
-    return
-  }
-
-  try {
-    // 开始倒计时
-    startCountdown()
-    
-    // 调用AuthService发送验证码
-    await AuthService.sendSmsCode(phone)
-    showMessage('验证码已发送')
-  } catch (error) {
-    // 发送失败时停止倒计时
-    if (countdownTimer) {
-      clearInterval(countdownTimer)
-      countdown.value = 0
-    }
-    showMessage(error.message || '验证码发送失败，请重试')
-  }
+// SMS按钮事件处理
+const handleSmsSuccess = (message) => {
+  toast.success(message)
 }
 
-// 倒计时功能
-const startCountdown = () => {
-  countdown.value = 60
-  countdownTimer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(countdownTimer)
-      countdownTimer = null
-    }
-  }, 1000)
-}
-
-// 显示提示消息
-const showMessage = (msg) => {
-  message.value = msg
-  setTimeout(() => {
-    message.value = ''
-  }, 3000)
+const handleSmsError = (message) => {
+  toast.error(message)
 }
 
 // 表单提交方法
 const handlePasswordLogin = async () => {
+  // 表单验证
+  const phoneValidation = validatePhone(passwordForm.value.phone)
+  const passwordValidation = validatePassword(passwordForm.value.password)
+  
+  const validationError = validateFields([phoneValidation, passwordValidation])
+  if (validationError) {
+    toast.error(validationError)
+    return
+  }
+  
+  if (!passwordForm.value.agreement) {
+    toast.error('请先同意用户协议与服务条款')
+    return
+  }
+  
   try {
     const success = await authStore.login(passwordForm.value.phone, passwordForm.value.password)
     if (success) {
-      showMessage('登录成功！')
+      toast.success('登录成功！')
       // 跳转到redirect指定的页面或首页
       const redirect = route.query.redirect || '/'
       router.push(redirect)
     }
   } catch (error) {
-    showMessage(error.message || '登录失败，请重试')
+    toast.error(error.message || '登录失败，请重试')
   }
 }
 
 const handleCodeLogin = async () => {
+  // 表单验证
+  const phoneValidation = validatePhone(codeForm.value.phone)
+  const codeValidation = validateSmsCode(codeForm.value.verificationCode)
+  
+  const validationError = validateFields([phoneValidation, codeValidation])
+  if (validationError) {
+    toast.error(validationError)
+    return
+  }
+  
+  if (!codeForm.value.agreement) {
+    toast.error('请先同意用户协议与服务条款')
+    return
+  }
+  
   try {
-    // 使用AuthService进行短信验证码登录
-    const { access, refresh, user } = await AuthService.smsLogin(
+    // 使用authStore进行短信验证码登录
+    const success = await authStore.smsLogin(
       codeForm.value.phone, 
       codeForm.value.verificationCode
     )
     
-    authStore.setTokens(access, refresh)
-    authStore.setUserInfo(user)
-    
-    showMessage('登录成功！')
-    const redirect = route.query.redirect || '/'
-    router.push(redirect)
+    if (success) {
+      toast.success('登录成功！')
+      const redirect = route.query.redirect || '/'
+      router.push(redirect)
+    }
   } catch (error) {
-    showMessage(error.message || '验证码登录失败，请重试')
+    toast.error(error.message || '验证码登录失败，请重试')
   }
 }
 
@@ -419,12 +403,7 @@ const closeDialog = () => {
   // router.go(-1) // 返回上一页
 }
 
-// 组件销毁时清理计时器
-onUnmounted(() => {
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
-  }
-})
+
 </script>
 
 <style scoped>

@@ -1,6 +1,6 @@
 <template>
   <div style="background-color: black; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-    <!-- 登录容器 -->
+    <!-- 注册容器 -->
     <div class="login-container">
       <!-- 关闭按钮 -->
       <span class="close-btn" @click="closeDialog">
@@ -8,138 +8,9 @@
       </span>
 
       <!-- 快速注册表单 -->
-      <div v-if="currentForm === 'password'" class="form-section">
+      <div class="form-section">
         <h4 class="text-center mt-4">快速注册</h4>
-        <form class="mt-4" @submit.prevent="handlePasswordRegister">
-          <div class="mb-3">
-            <div class="input-group">
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="passwordForm.phoneNumber"
-                placeholder="请输入手机号"
-                required
-              >
-            </div>
-          </div>
-          <div class="mb-3 mt-4">
-            <div class="code-input-container">
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="passwordForm.verificationCode"
-                placeholder="请输入验证码"
-                required
-              >
-              <button 
-                class="verification-code-btn" 
-                type="button"
-                @click="sendVerificationCode('password')"
-                :disabled="countdown > 0"
-              >
-                {{ countdown > 0 ? `${countdown}秒后重新获取` : '获取验证码' }}
-              </button>
-            </div>
-          </div>
-          <div class="mb-3 mt-4">
-            <div class="password-input-container">
-              <input 
-                :type="showPassword ? 'text' : 'password'" 
-                class="form-control" 
-                v-model="passwordForm.password"
-                placeholder="请输入密码"
-                required
-              >
-              <button 
-                type="button" 
-                class="password-toggle-btn"
-                @click="togglePasswordVisibility"
-                :title="showPassword ? '隐藏密码' : '显示密码'"
-              >
-                👁️
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isPasswordFormValid">
-            完成注册
-          </button>
-
-          <div class="form-check mt-4 text-center">
-            <input 
-              class="form-check-input" 
-              type="checkbox" 
-              v-model="passwordForm.agreement"
-              id="agreement"
-              required
-            >
-            <label class="form-check-label" for="agreement">
-              我已阅读并同意 <a href="#" class="text-link">《用户协议与服务条款》</a>
-            </label>
-          </div>
-        </form>
-      </div>
-
-      <!-- 手机验证码登录表单 -->
-      <div v-if="currentForm === 'code'" class="form-section">
-        <h4 class="text-center mt-4">手机验证码登录</h4>
-        <form class="mt-5" @submit.prevent="handleCodeLogin">
-          <div class="mb-3">
-            <div class="input-group">
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="codeForm.phoneNumber"
-                placeholder="请输入手机号"
-                required
-              >
-            </div>
-          </div>
-          <div class="mb-3 mt-4">
-            <div class="code-input-container">
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="codeForm.verificationCode"
-                placeholder="请输入验证码"
-                required
-              >
-              <button 
-                class="verification-code-btn" 
-                type="button"
-                @click="sendVerificationCode('code')"
-                :disabled="countdown > 0"
-              >
-                {{ countdown > 0 ? `${countdown}秒后重新获取` : '获取验证码' }}
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isCodeFormValid">
-            登录
-          </button>
-
-          <!-- 切换按钮 -->
-          <span class="toggle-btn" @click="switchToPasswordLogin">使用密码登录</span>
-          
-          <!-- 用户协议复选框 -->
-          <div class="form-check mt-4 text-center">
-            <input 
-              class="form-check-input" 
-              type="checkbox" 
-              v-model="codeForm.agreement"
-              id="agreementCode"
-              required
-            >
-            <label class="form-check-label" for="agreementCode">
-              我已阅读并同意 <a href="#" class="text-link">《用户协议与服务条款》</a>
-            </label>
-          </div>
-        </form>
-      </div>
-
-      <!-- 注册表单 -->
-      <div v-if="currentForm === 'register'" class="form-section">
-        <h4 class="text-center mt-4">输入手机号及验证码</h4>
-        <form class="mt-5" @submit.prevent="handleRegisterSubmit">
+        <form class="mt-4" @submit.prevent="handleRegister">
           <div class="mb-3">
             <div class="input-group">
               <input 
@@ -160,30 +31,26 @@
                 placeholder="请输入验证码"
                 required
               >
-              <button 
-                class="verification-code-btn" 
-                type="button"
-                @click="sendVerificationCode('register')"
-                :disabled="countdown > 0"
-              >
-                {{ countdown > 0 ? `${countdown}秒后重新获取` : '获取验证码' }}
-              </button>
+              <SmsButton 
+                :phone="registerForm.phoneNumber"
+                @success="handleSmsSuccess"
+                @error="handleSmsError"
+              />
             </div>
           </div>
           <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isRegisterFormValid">
-            提交注册
+            完成注册
           </button>
 
-          <!-- 用户协议复选框 -->
-          <div class="form-check text-center" id="form-check">
+          <div class="form-check mt-4 text-center">
             <input 
               class="form-check-input" 
               type="checkbox" 
               v-model="registerForm.agreement"
-              id="agreementRegister"
+              id="agreement"
               required
             >
-            <label class="form-check-label" for="agreementRegister">
+            <label class="form-check-label" for="agreement">
               我已阅读并同意 <a href="#" class="text-link">《用户协议与服务条款》</a>
             </label>
           </div>
@@ -195,12 +62,7 @@
     <div class="yellow-footer">
       <div class="text-center mt-4" style="font-size: 17px">
         <p>
-          <span v-if="currentForm === 'password'">
-            我已有账户 <a href="#" class="text-primary" @click.prevent="switchToRegister">去登录</a>
-          </span>
-          <span v-else>
-            我还没有账户 <a href="#" class="text-primary" @click.prevent="switchToPasswordLogin">去注册</a>
-          </span>
+          我已有账户 <a href="#" class="text-primary" @click.prevent="goToLogin">去登录</a>
         </p>
       </div>
     </div>
@@ -213,38 +75,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth'
+import { validatePhone, validateSmsCode, validateFields } from '@/utils/validators'
+import toast from '@/utils/toast'
+import SmsButton from '@/components/SmsButton.vue'
 
 const router = useRouter()
 
-// 当前显示的表单类型
-const currentForm = ref('password') // 'password' | 'code' | 'register'
-
-// 倒计时状态
-const countdown = ref(0)
-let countdownTimer = null
-
-// 提示消息
-const message = ref('')
-
-// 密码显示状态
-const showPassword = ref(false)
-
-// 各个表单的数据
-const passwordForm = ref({
-  phoneNumber: '',
-  verificationCode: '',
-  password: '',
-  agreement: false
-})
-
-const codeForm = ref({
-  phoneNumber: '',
-  verificationCode: '',
-  agreement: false
-})
-
+// 注册表单数据
 const registerForm = ref({
   phoneNumber: '',
   verificationCode: '',
@@ -252,136 +92,85 @@ const registerForm = ref({
 })
 
 // 表单验证计算属性
-const isPasswordFormValid = computed(() => {
-  return passwordForm.value.phoneNumber &&
-         passwordForm.value.verificationCode &&
-         passwordForm.value.password &&
-         passwordForm.value.password.length >= 6 &&
-         passwordForm.value.agreement
-})
-
-const isCodeFormValid = computed(() => {
-  return codeForm.value.phoneNumber &&
-         codeForm.value.verificationCode &&
-         codeForm.value.agreement
-})
-
 const isRegisterFormValid = computed(() => {
-  return registerForm.value.phoneNumber &&
-         registerForm.value.verificationCode &&
+  const phoneValidation = validatePhone(registerForm.value.phoneNumber)
+  const codeValidation = validateSmsCode(registerForm.value.verificationCode)
+  
+  return phoneValidation.valid && 
+         codeValidation.valid && 
          registerForm.value.agreement
 })
 
-// 表单切换方法
-const switchToPasswordLogin = () => {
-  currentForm.value = 'password'
+// SMS按钮事件处理
+const handleSmsSuccess = (message) => {
+  toast.success(message)
 }
 
-const switchToRegister = () => {
-  currentForm.value = 'code'
+const handleSmsError = (message) => {
+  toast.error(message)
 }
 
-// 密码显示切换方法
-const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value
-}
 
-// 发送验证码
-const sendVerificationCode = (formType) => {
-  let phoneNumber = ''
+
+// 注册提交
+const handleRegister = async () => {
+  // 表单验证
+  const phoneValidation = validatePhone(registerForm.value.phoneNumber)
+  const codeValidation = validateSmsCode(registerForm.value.verificationCode)
   
-  if (formType === 'password') {
-    phoneNumber = passwordForm.value.phoneNumber
-  } else if (formType === 'code') {
-    phoneNumber = codeForm.value.phoneNumber
-  } else if (formType === 'register') {
-    phoneNumber = registerForm.value.phoneNumber
-  }
-
-  if (!phoneNumber) {
-    showMessage('请先输入手机号')
-    return
-  }
-
-  // 手机号格式验证
-  const phoneRegex = /^1[3-9]\d{9}$/
-  if (!phoneRegex.test(phoneNumber)) {
-    showMessage('请输入正确的手机号码')
-    return
-  }
-
-  // 开始倒计时
-  startCountdown()
-  
-  // TODO: 调用后端API发送验证码
-  console.log(`向 ${phoneNumber} 发送验证码`)
-  showMessage('验证码已发送')
-}
-
-// 倒计时功能
-const startCountdown = () => {
-  countdown.value = 60
-  countdownTimer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(countdownTimer)
-      countdownTimer = null
-    }
-  }, 1000)
-}
-
-// 显示提示消息
-const showMessage = (msg) => {
-  message.value = msg
-  setTimeout(() => {
-    message.value = ''
-  }, 3000)
-}
-
-// 表单提交方法
-const handlePasswordRegister = () => {
-  if (passwordForm.value.password.length < 6) {
-    showMessage('密码长度至少为6位')
+  const validationError = validateFields([phoneValidation, codeValidation])
+  if (validationError) {
+    toast.error(validationError)
     return
   }
   
-  console.log('密码注册表单提交:', passwordForm.value)
-  showMessage('注册成功！')
+  if (!registerForm.value.agreement) {
+    toast.error('请先同意用户协议与服务条款')
+    return
+  }
   
-  // TODO: 调用后端API进行注册
-  // 注册成功后可以跳转到登录页面或首页
-  // router.push('/login')
-}
-
-const handleCodeLogin = () => {
-  console.log('验证码登录表单提交:', codeForm.value)
-  showMessage('登录成功！')
-  
-  // TODO: 调用后端API进行登录验证
-  // 登录成功后跳转到首页
-  // router.push('/')
-}
-
-const handleRegisterSubmit = () => {
   console.log('注册表单提交:', registerForm.value)
-  showMessage('注册信息提交成功！')
   
-  // TODO: 调用后端API提交注册信息
+  try {
+    // 调用后端API进行注册
+    const authStore = useAuthStore()
+    const result = await authStore.smsRegister(
+      registerForm.value.phoneNumber, 
+      registerForm.value.verificationCode
+    )
+    
+    if (result.success) {
+      const successMessage = result.needSetPassword 
+        ? '注册成功！🎉\n为了帮您更好地管理账号，建议前往个人中心设置登录密码以提高账户安全性。'
+        : '注册成功！🎉'
+      
+      toast.success(successMessage, {
+        duration: 0, // 不自动关闭，让用户手动关闭
+        closable: true
+      })
+      
+      // 注册成功后跳转到首页
+      setTimeout(() => {
+        router.push('/')
+      }, 3000)
+    }
+  } catch (error) {
+    toast.error(error.message || '注册失败，请重试')
+  }
+}
+
+// 跳转到登录页面
+const goToLogin = () => {
+  router.push('/login')
 }
 
 // 关闭对话框
 const closeDialog = () => {
   console.log('关闭对话框')
-  // 可以发射事件或者路由跳转
-  // router.go(-1) // 返回上一页
+  router.push('/') // 返回首页
 }
 
-// 组件销毁时清理计时器
-onUnmounted(() => {
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
-  }
-})
+
 </script>
 
 <style scoped>

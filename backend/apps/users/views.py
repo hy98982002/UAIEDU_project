@@ -3,18 +3,22 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.mixins import RetrieveModelMixin, UpdateModelMixin
+from rest_framework.throttling import UserRateThrottle
+from .throttles import ChangePwdThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import login
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.db import transaction
 import logging
 
 from .models import User, UserProfile, LoginLog
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, SMSLoginSerializer,
     UserDetailSerializer, UserProfileSerializer, ChangePasswordSerializer,
-    WeChatBindingSerializer, UserSettingSerializer
+    WeChatBindingSerializer, UserSettingSerializer, SMSRegistrationSerializer
 )
+from .utils import SmsCodeManager, is_valid_phone, format_phone_number
 
 logger = logging.getLogger('apps.users')
 
@@ -182,29 +186,114 @@ def send_sms_code_view(request):
     POST /api/auth/send-sms/
     """
     phone = request.data.get('phone', '')
+    code_type = request.data.get('code_type', 'default')  # register, login, reset_password等
     
     # 验证手机号格式
-    import re
-    if not re.match(r'^1[3-9]\d{9}$', phone):
+    if not is_valid_phone(phone):
+        logger.warning(f"手机号格式错误: {phone}")
         return Response({
             'status': 400,
             'msg': '请输入正确的手机号格式',
             'data': None
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    # TODO: 实际项目中这里应该集成真实的短信服务
-    # 现在暂时返回固定的验证码用于测试
-    logger.info(f"发送短信验证码到: {phone}")
+    # 检查发送频率限制
+    send_check = SmsCodeManager.can_send_code(phone)
+    if not send_check['can_send']:
+        logger.warning(f"验证码发送频率超限: {format_phone_number(phone)}")
+        return Response({
+            'status': 429,
+            'msg': send_check['message'],
+            'data': None
+        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    
+    try:
+        # 生成验证码
+        code = SmsCodeManager.generate_code()
+        
+        # 开发环境使用固定验证码
+        if hasattr(SmsCodeManager, 'get_development_code'):
+            dev_code = SmsCodeManager.get_development_code()
+            if dev_code:
+                code = dev_code
+        
+        # 存储验证码
+        if not SmsCodeManager.store_code(phone, code, code_type):
+            logger.error(f"验证码存储失败: {format_phone_number(phone)}")
+            return Response({
+                'status': 500,
+                'msg': '验证码发送失败，请稍后重试',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # 记录发送次数
+        SmsCodeManager.record_send(phone)
+        
+        # TODO: 实际项目中这里应该集成真实的短信服务
+        # 现在暂时在日志中显示验证码用于测试
+        logger.info(f"发送短信验证码到: {format_phone_number(phone)}, 验证码: {code}")
+        
+        return Response({
+            'status': 200,
+            'msg': '验证码发送成功',
+            'data': {
+                'phone': format_phone_number(phone),
+                'expire_minutes': SmsCodeManager.CODE_EXPIRE_MINUTES,
+                'remaining_count': send_check.get('remaining_count', 0) - 1
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"发送验证码异常: {format_phone_number(phone)} - {str(e)}")
+        return Response({
+            'status': 500,
+            'msg': '验证码发送失败，请稍后重试',
+            'data': None
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def sms_register_view(request):
+    """
+    短信验证码注册API
+    POST /api/auth/sms-register/
+    """
+    serializer = SMSRegistrationSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        try:
+            user = serializer.save()
+            
+            # 生成JWT令牌
+            tokens = get_tokens_for_user(user)
+            
+            # 记录注册成功日志
+            logger.info(f"用户短信注册成功: {user.phone}")
+            
+            return Response({
+                'status': 201,
+                'msg': '注册成功！建议您前往个人中心设置登录密码以提高账户安全性。',
+                'data': {
+                    'user': UserDetailSerializer(user).data,
+                    'tokens': tokens,
+                    'need_set_password': True  # 标记需要设置密码
+                }
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"用户短信注册失败: {str(e)}")
+            return Response({
+                'status': 500,
+                'msg': '注册失败，请稍后重试',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     return Response({
-        'status': 200,
-        'msg': '验证码发送成功',
-        'data': {
-            'phone': phone,
-            'code': '123456',  # 测试用固定验证码
-            'expires_in': 300  # 5分钟有效期
-        }
-    })
+        'status': 400,
+        'msg': '注册信息有误',
+        'data': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
@@ -271,9 +360,9 @@ class UserViewSet(RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], throttle_classes=[ChangePwdThrottle])
     def change_password(self, request):
-        """修改密码"""
+        """修改密码/首次设置密码"""
         serializer = ChangePasswordSerializer(
             data=request.data,
             context={'request': request}
@@ -281,20 +370,25 @@ class UserViewSet(RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
         
         if serializer.is_valid():
             user = request.user
-            user.set_password(serializer.validated_data['new_password'])
-            user.save()
             
-            logger.info(f"用户修改密码: {user.phone}")
+            # 判断是首次设置还是修改密码
+            is_first_time = not user.has_usable_password()
+            action = "设置" if is_first_time else "修改"
+            
+            # 使用序列化器的save方法
+            tokens = serializer.save()
+            
+            logger.info(f"用户{action}密码: {user.phone}")
             
             return Response({
                 'status': 200,
-                'msg': '密码修改成功',
-                'data': None
+                'msg': f'密码{action}成功',
+                'data': {'tokens': tokens}
             })
         
         return Response({
             'status': 400,
-            'msg': '密码修改失败',
+            'msg': '密码修改/设置失败',
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
     

@@ -13,6 +13,7 @@ app_name = 'users'
 urlpatterns = [
     # 认证相关API
     path('auth/register/', views.register_view, name='register'),
+    path('auth/sms-register/', views.sms_register_view, name='sms_register'),
     path('auth/login/', views.login_view, name='login'),
     path('auth/sms-login/', views.sms_login_view, name='sms_login'),
     path('auth/logout/', views.logout_view, name='logout'),
@@ -27,7 +28,8 @@ urlpatterns = [
 用户模块API路由说明：
 
 认证相关：
-- POST /api/users/auth/register/         - 用户注册
+- POST /api/users/auth/register/         - 用户注册（需要密码）
+- POST /api/users/auth/sms-register/     - 短信验证码注册（不需要密码）
 - POST /api/users/auth/login/           - 密码登录  
 - POST /api/users/auth/sms-login/       - 验证码登录
 - POST /api/users/auth/logout/          - 用户登出

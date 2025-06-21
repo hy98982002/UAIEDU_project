@@ -11,13 +11,13 @@
       <!-- 快速注册表单 -->
       <div class="form-section">
         <h4 class="text-center mt-4">快速注册</h4>
-        <form class="mt-4" @submit.prevent="handlePasswordRegister">
+        <form class="mt-4" @submit.prevent="handleRegister">
           <div class="mb-3">
             <div class="input-group">
               <input 
                 type="text" 
                 class="form-control" 
-                v-model="passwordForm.phoneNumber"
+                v-model="registerForm.phoneNumber"
                 placeholder="请输入手机号"
                 required
               >
@@ -28,7 +28,7 @@
               <input 
                 type="text" 
                 class="form-control" 
-                v-model="passwordForm.verificationCode"
+                v-model="registerForm.verificationCode"
                 placeholder="请输入验证码"
                 required
               >
@@ -42,26 +42,7 @@
               </button>
             </div>
           </div>
-          <div class="mb-3 mt-4">
-            <div class="password-input-container">
-              <input 
-                :type="showPassword ? 'text' : 'password'" 
-                class="form-control" 
-                v-model="passwordForm.password"
-                placeholder="请输入密码"
-                required
-              >
-              <button 
-                type="button" 
-                class="password-toggle-btn"
-                @click="togglePasswordVisibility"
-                :title="showPassword ? '隐藏密码' : '显示密码'"
-              >
-                👁️
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isPasswordFormValid">
+          <button type="submit" class="btn btn-dark w-100 mt-4" :disabled="!isRegisterFormValid">
             完成注册
           </button>
 
@@ -69,7 +50,7 @@
             <input 
               class="form-check-input" 
               type="checkbox" 
-              v-model="passwordForm.agreement"
+              v-model="registerForm.agreement"
               id="agreement"
               required
             >
@@ -113,34 +94,23 @@ let countdownTimer = null
 // 提示消息
 const message = ref('')
 
-// 密码显示状态
-const showPassword = ref(false)
-
-// 表单数据
-const passwordForm = ref({
+// 注册表单数据
+const registerForm = ref({
   phoneNumber: '',
   verificationCode: '',
-  password: '',
   agreement: false
 })
 
 // 表单验证计算属性
-const isPasswordFormValid = computed(() => {
-  return passwordForm.value.phoneNumber &&
-         passwordForm.value.verificationCode &&
-         passwordForm.value.password &&
-         passwordForm.value.password.length >= 6 &&
-         passwordForm.value.agreement
+const isRegisterFormValid = computed(() => {
+  return registerForm.value.phoneNumber &&
+         registerForm.value.verificationCode &&
+         registerForm.value.agreement
 })
-
-// 密码显示切换方法
-const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value
-}
 
 // 发送验证码
 const sendVerificationCode = () => {
-  const phoneNumber = passwordForm.value.phoneNumber
+  const phoneNumber = registerForm.value.phoneNumber
 
   if (!phoneNumber) {
     showMessage('请先输入手机号')
@@ -182,29 +152,27 @@ const showMessage = (msg) => {
   }, 3000)
 }
 
-// 表单提交方法
-const handlePasswordRegister = () => {
-  if (passwordForm.value.password.length < 6) {
-    showMessage('密码长度至少为6位')
-    return
-  }
-  
-  console.log('密码注册表单提交:', passwordForm.value)
-  showMessage('注册成功！')
+// 注册处理
+const handleRegister = () => {
+  console.log('注册表单提交:', registerForm.value)
   
   // TODO: 调用后端API进行注册
+  showMessage('注册成功！请前往个人中心设置登录密码以提高账户安全性。')
+  
   // 注册成功后关闭模态框
-  closeModal()
+  setTimeout(() => {
+    closeModal()
+  }, 2000)
 }
 
 // 关闭模态框
 const closeModal = () => {
   emit('close')
-  router.push('/') // 返回首页
 }
 
 // 切换到登录
 const switchToLogin = () => {
+  closeModal()
   router.push('/login')
 }
 
